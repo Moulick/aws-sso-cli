@@ -25,6 +25,7 @@ import (
 	// "github.com/davecgh/go-spew/spew"
 	"github.com/goccy/go-yaml"
 	"github.com/posener/complete"
+
 	"github.com/synfinatic/aws-sso-cli/internal/utils"
 	"github.com/synfinatic/aws-sso-cli/sso"
 )
@@ -112,7 +113,7 @@ func (p *Predictor) newPredictor(s *sso.Settings, c *sso.Cache) *Predictor {
 // FieldListComplete returns a completor for the `list` fields
 func (p *Predictor) FieldListComplete() complete.Predictor {
 	set := []string{}
-	for f := range AllListFields {
+	for f := range AllListFields.Fields {
 		set = append(set, f)
 	}
 
@@ -200,7 +201,7 @@ func getSSOValue() string {
 
 func SupportedListField(name string) bool {
 	ret := false
-	for k := range AllListFields {
+	for k := range AllListFields.Fields {
 		if k == name {
 			ret = true
 			break

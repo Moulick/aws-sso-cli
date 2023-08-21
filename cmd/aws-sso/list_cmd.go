@@ -24,23 +24,24 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/synfinatic/gotable"
+
 	"github.com/synfinatic/aws-sso-cli/internal/predictor"
 	"github.com/synfinatic/aws-sso-cli/internal/storage"
 	"github.com/synfinatic/aws-sso-cli/internal/utils"
 	"github.com/synfinatic/aws-sso-cli/sso"
-	"github.com/synfinatic/gotable"
 )
 
 type ListCmd struct {
-	ListFields bool     `kong:"short='f',help='List available fields',xor='listfields'"`
-	CSV        bool     `kong:"help='Generate CSV instead of a table',xor='listfields'"`
-	Prefix     string   `kong:"short='P',help='Filter based on the <FieldName>=<Prefix>'"`
-	Fields     []string `kong:"optional,arg,help='Fields to display',env='AWS_SSO_FIELDS',predictor='fieldList',xor='listfields'"`
-	Sort       string   `kong:"short='s',help='Sort results by the <FieldName>',default='AccountId',env='AWS_SSO_FIELD_SORT',predictor='fieldList'"`
-	Reverse    bool     `kong:"help='Reverse sort results',env='AWS_SSO_FIELD_SORT_REVERSE'"`
+	ListFields bool           `kong:"short='f',help='List available fields',xor='listfields'"`
+	CSV        bool           `kong:"help='Generate CSV instead of a table',xor='listfields'"`
+	Prefix     string         `kong:"short='P',help='Filter based on the <FieldName>=<Prefix>'"`
+	Fields     sso.ListFields `kong:"optional,arg,help='Fields to display',env='AWS_SSO_FIELDS',predictor='fieldList',xor='listfields'"`
+	Sort       string         `kong:"short='s',help='Sort results by the <FieldName>',default='AccountId',env='AWS_SSO_FIELD_SORT',predictor='fieldList'"`
+	Reverse    bool           `kong:"help='Reverse sort results',env='AWS_SSO_FIELD_SORT_REVERSE'"`
 }
 
-// Actually used in main.go, but definied here for locality
+// Actually used in main.go, but defined here for locality
 var DEFAULT_LIST_FIELDS []string = []string{"AccountIdPad", "AccountAlias", "RoleName", "Profile", "Expires"}
 
 // what should this actually do?
@@ -59,9 +60,9 @@ func (cc *ListCmd) Run(ctx *RunContext) error {
 			return fmt.Errorf("--prefix must be in the format of <FieldName>=<Prefix>")
 		}
 		prefixSearch = strings.Split(ctx.Cli.List.Prefix, "=")
-		validFields := make([]string, len(predictor.AllListFields))
+		validFields := make([]string, len(predictor.AllListFields.Fields))
 		i := 0
-		for k := range predictor.AllListFields {
+		for k := range predictor.AllListFields.Fields {
 			validFields[i] = k
 			i++
 		}
@@ -82,11 +83,11 @@ func (cc *ListCmd) Run(ctx *RunContext) error {
 	}
 
 	fields := ctx.Settings.ListFields
-	if len(ctx.Cli.List.Fields) > 0 {
+	if len(ctx.Cli.List.Fields.Fields) > 0 {
 		fields = ctx.Cli.List.Fields
 	}
 
-	for _, f := range fields {
+	for _, f := range fields.Fields {
 		if !predictor.SupportedListField(f) {
 			return fmt.Errorf("Unsupported field: '%s'", f)
 		}
@@ -117,11 +118,17 @@ func (cc *DefaultCmd) Run(ctx *RunContext) error {
 }
 
 // Print all our roles
-func printRoles(ctx *RunContext, fields []string, csv bool, prefixSearch []string, sortby string, reverse bool) error {
+func printRoles(ctx *RunContext, fields sso.ListFields, csv bool, prefixSearch []string, sortby string, reverse bool) error {
 	var err error
 	roles := ctx.Settings.Cache.GetSSO().Roles
 	tr := []gotable.TableStruct{}
 	idx := 0
+
+	x := []string{}
+
+	for k, _ := range fields.Fields {
+		x = append(x, k)
+	}
 
 	allRoles := roles.GetAllRoles()
 	for _, roleFlat := range allRoles {
@@ -185,7 +192,7 @@ func printRoles(ctx *RunContext, fields []string, csv bool, prefixSearch []strin
 	}
 
 	if csv {
-		err = gotable.GenerateCSV(tr, fields)
+		err = gotable.GenerateCSV(tr, x) // TODO: Fix
 	} else {
 		// Determine when our AWS SSO session expires
 		// list doesn't call doAuth() so we have to initialize our global *AwsSSO manually
@@ -209,7 +216,7 @@ func printRoles(ctx *RunContext, fields []string, csv bool, prefixSearch []strin
 		}
 		fmt.Printf("List of AWS roles for SSO Instance: %s%s\n\n", ctx.Settings.DefaultSSO, expires)
 
-		err = gotable.GenerateTable(tr, fields)
+		err = gotable.GenerateTable(tr, x)
 	}
 
 	if err == nil {
@@ -233,7 +240,7 @@ func (cfn ConfigFieldNames) GetHeader(fieldName string) (string, error) {
 // listAllFields generates a table with all the AWSRoleFlat fields we can print
 func listAllFields() {
 	names := []string{}
-	for k := range predictor.AllListFields {
+	for k := range predictor.AllListFields.Fields {
 		names = append(names, k)
 	}
 	sort.Strings(names)
@@ -241,7 +248,7 @@ func listAllFields() {
 	for _, k := range names {
 		ts = append(ts, ConfigFieldNames{
 			Field:       k,
-			Description: predictor.AllListFields[k],
+			Description: predictor.AllListFields.Fields[k],
 		})
 	}
 

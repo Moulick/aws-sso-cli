@@ -34,6 +34,7 @@ import (
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/sirupsen/logrus"
+
 	"github.com/synfinatic/aws-sso-cli/internal/url"
 	"github.com/synfinatic/aws-sso-cli/internal/utils"
 )
@@ -73,10 +74,19 @@ type Settings struct {
 	AccountPrimaryTag         []string                 `koanf:"AccountPrimaryTag" yaml:"AccountPrimaryTag,omitempty"`
 	FirstTag                  string                   `koanf:"FirstTag" yaml:"FirstTag,omitempty"`
 	PromptColors              PromptColors             `koanf:"PromptColors" yaml:"PromptColors,omitempty"` // go-prompt colors
-	ListFields                []string                 `koanf:"ListFields" yaml:"ListFields,omitempty"`
+	ListFields                ListFields               `koanf:"ListFields" yaml:"ListFields,omitempty"`
 	ConfigVariables           map[string]interface{}   `koanf:"ConfigVariables" yaml:"ConfigVariables,omitempty"`
 	EnvVarTags                []string                 `koanf:"EnvVarTags" yaml:"EnvVarTags,omitempty"`
 	FullTextSearch            bool                     `koanf:"FullTextSearch" yaml:"FullTextSearch"`
+}
+
+type ListFields struct {
+	Fields map[string]string
+	Tags   Tags `cmd:""`
+}
+
+type Tags struct {
+	tags []string
 }
 
 // GetDefaultRegion scans the config settings file to pick the most local DefaultRegion from the tree
@@ -195,7 +205,7 @@ func LoadSettings(configFile, cacheFile string, defaults map[string]interface{},
 
 	s.SSO[s.DefaultSSO].Refresh(s)
 
-	s.applyDeprecations()
+	//s.applyDeprecations()
 	if err = s.Validate(); err != nil {
 		return s, err
 	}
@@ -219,51 +229,51 @@ func (s *Settings) Validate() error {
 	return nil
 }
 
-// applyDeprecations migrates old config options to the new one and returns true
-// if we made a change
-func (s *Settings) applyDeprecations() bool {
-	var change = false
-	var err error
-
-	// Upgrade ConfigUrlAction to ConfigProfilesUrlAction because we want to
-	// deprecate ConfigUrlAction.
-	if s.ConfigUrlAction != "" && s.ConfigProfilesUrlAction == "" {
-		s.ConfigProfilesUrlAction, err = url.NewConfigProfilesAction(s.ConfigUrlAction)
-		if err != nil {
-			log.Warnf("Invalid value for ConfigUrlAction: %s", s.ConfigUrlAction)
-		}
-		s.ConfigUrlAction = string(url.Undef) // disable old value so it is omitempty
-		change = true
-	}
-
-	// Upgrade FirefoxOpenUrlInContainer to UrlAction = open-url-in-container
-	if s.FirefoxOpenUrlInContainer {
-		s.UrlAction = url.OpenUrlContainer
-		s.FirefoxOpenUrlInContainer = false // disable old value so it is omitempty
-		change = true
-	}
-
-	// ExpiresStr => Expires in v1.11.0
-	// AccountIdStr => AccountIdPad v1.11.0
-	// ARN => Arn v1.11.0
-	if len(s.ListFields) > 0 {
-		for i, v := range s.ListFields {
-			switch v {
-			case "ExpiresStr":
-				s.ListFields[i] = "Expires"
-			case "AccountIdStr":
-				s.ListFields[i] = "AccountIdPad"
-			case "ARN":
-				s.ListFields[i] = "Arn"
-			}
-		}
-	}
-
-	// AccountIdStr .AccountId => .AccountIdPad in v1.11.0
-	s.ProfileFormat = strings.ReplaceAll(s.ProfileFormat, "AccountIdStr .AccountId", ".AccountIdPad")
-
-	return change
-}
+//// applyDeprecations migrates old config options to the new one and returns true
+//// if we made a change
+//func (s *Settings) applyDeprecations() bool {
+//	var change = false
+//	var err error
+//
+//	// Upgrade ConfigUrlAction to ConfigProfilesUrlAction because we want to
+//	// deprecate ConfigUrlAction.
+//	if s.ConfigUrlAction != "" && s.ConfigProfilesUrlAction == "" {
+//		s.ConfigProfilesUrlAction, err = url.NewConfigProfilesAction(s.ConfigUrlAction)
+//		if err != nil {
+//			log.Warnf("Invalid value for ConfigUrlAction: %s", s.ConfigUrlAction)
+//		}
+//		s.ConfigUrlAction = string(url.Undef) // disable old value so it is omitempty
+//		change = true
+//	}
+//
+//	// Upgrade FirefoxOpenUrlInContainer to UrlAction = open-url-in-container
+//	if s.FirefoxOpenUrlInContainer {
+//		s.UrlAction = url.OpenUrlContainer
+//		s.FirefoxOpenUrlInContainer = false // disable old value so it is omitempty
+//		change = true
+//	}
+//
+//	// ExpiresStr => Expires in v1.11.0
+//	// AccountIdStr => AccountIdPad v1.11.0
+//	// ARN => Arn v1.11.0
+//	if len(s.ListFields) > 0 {
+//		for i, v := range s.ListFields {
+//			switch v {
+//			case "ExpiresStr":
+//				s.ListFields[i] = "Expires"
+//			case "AccountIdStr":
+//				s.ListFields[i] = "AccountIdPad"
+//			case "ARN":
+//				s.ListFields[i] = "Arn"
+//			}
+//		}
+//	}
+//
+//	// AccountIdStr .AccountId => .AccountIdPad in v1.11.0
+//	s.ProfileFormat = strings.ReplaceAll(s.ProfileFormat, "AccountIdStr .AccountId", ".AccountIdPad")
+//
+//	return change
+//}
 
 // Save overwrites the current config file with our settings (not recommended)
 func (s *Settings) Save(configFile string, overwrite bool) error {

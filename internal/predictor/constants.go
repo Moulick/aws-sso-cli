@@ -1,5 +1,7 @@
 package predictor
 
+import "github.com/synfinatic/aws-sso-cli/sso"
+
 /*
  * AWS SSO CLI
  * Copyright (c) 2021-2023 Aaron Turner  <synfinatic at gmail dot com>
@@ -19,21 +21,24 @@ package predictor
  */
 
 // keys match AWSRoleFlat header and value is the description
-var AllListFields = map[string]string{
-	"Id":            "Column Index",
-	"Arn":           "AWS Role Resource Name",
-	"AccountId":     "AWS AccountID (integer)",
-	"AccountIdPad":  "AWS AccountID (zero padded)",
-	"AccountName":   "Configured Account Name",
-	"AccountAlias":  "AWS Account Alias",
-	"DefaultRegion": "Default AWS Region",
-	"EmailAddress":  "Root Email for AWS account",
-	"Expires":       "Time until STS creds expire",
-	"ExpiresEpoch":  "Unix Epoch when STS creds expire",
-	"RoleName":      "AWS Role Name",
-	"SSO":           "AWS SSO Instance Name",
-	"Via":           "Role Chain Via",
-	"Profile":       "AWS_SSO_PROFILE / AWS_PROFILE",
+var AllListFields = sso.ListFields{
+	Fields: map[string]string{
+		"Id":            "Column Index",
+		"Arn":           "AWS Role Resource Name",
+		"AccountId":     "AWS AccountID (integer)",
+		"AccountIdPad":  "AWS AccountID (zero padded)",
+		"AccountName":   "Configured Account Name",
+		"AccountAlias":  "AWS Account Alias",
+		"DefaultRegion": "Default AWS Region",
+		"EmailAddress":  "Root Email for AWS account",
+		"Expires":       "Time until STS creds expire",
+		"ExpiresEpoch":  "Unix Epoch when STS creds expire",
+		"RoleName":      "AWS Role Name",
+		"SSO":           "AWS SSO Instance Name",
+		"Via":           "Role Chain Via",
+		"Profile":       "AWS_SSO_PROFILE / AWS_PROFILE",
+		"Tags":          "Tags",
+	},
 }
 
 // AvailableAwsRegions lists all the AWS regions that AWS provides
